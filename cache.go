@@ -1,7 +1,6 @@
 package cache_buntdb
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"path"
@@ -113,9 +112,8 @@ func (connect *buntdbCacheConnect) Read(key string) (Any, error) {
 
 	mcv := buntdbCacheValue{}
 
-	//待优化，统主JSON解析
-	// err = chef.JsonDecode([]byte(realVal), &mcv)
-	err = json.Unmarshal([]byte(realVal), &mcv)
+	//统一JSON解析
+	err = chef.UnmarshalJSON([]byte(realVal), &mcv)
 	if err != nil {
 		return nil, nil
 	}
@@ -131,9 +129,8 @@ func (connect *buntdbCacheConnect) Write(key string, val Any, expiry time.Durati
 
 	value := buntdbCacheValue{val}
 
-	//待优化，统主JSON解析
-	// bytes, err := chef.JsonEncode(value)
-	bytes, err := json.Marshal(value)
+	//统主JSON解析
+	bytes, err := chef.MarshalJSON(value)
 	if err != nil {
 		return err
 	}
