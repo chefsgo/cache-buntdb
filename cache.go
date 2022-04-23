@@ -8,7 +8,8 @@ import (
 	"time"
 
 	. "github.com/chefsgo/base"
-	"github.com/chefsgo/chef"
+	"github.com/chefsgo/cache"
+	"github.com/chefsgo/codec"
 	"github.com/tidwall/buntdb"
 )
 
@@ -17,30 +18,30 @@ var (
 )
 
 type (
-	buntdbCacheDriver struct {
+	buntdbDriver struct {
 		store string
 	}
-	buntdbCacheConnect struct {
+	buntdbConnect struct {
 		mutex sync.RWMutex
 
 		name    string
-		config  chef.CacheConfig
-		setting buntdbCacheSetting
+		config  cache.Config
+		setting buntdbSetting
 
 		db *buntdb.DB
 	}
-	buntdbCacheSetting struct {
+	buntdbSetting struct {
 		Store string
 	}
-	buntdbCacheValue struct {
+	buntdbValue struct {
 		Value Any `json:"value"`
 	}
 )
 
 //连接
-func (driver *buntdbCacheDriver) Connect(name string, config chef.CacheConfig) (chef.CacheConnect, error) {
+func (driver *buntdbDriver) Connect(name string, config cache.Config) (cache.Connect, error) {
 	//获取配置信息
-	setting := buntdbCacheSetting{
+	setting := buntdbSetting{
 		Store: driver.store,
 	}
 
@@ -58,13 +59,13 @@ func (driver *buntdbCacheDriver) Connect(name string, config chef.CacheConfig) (
 		setting.Store = vv
 	}
 
-	return &buntdbCacheConnect{
+	return &buntdbConnect{
 		name: name, config: config, setting: setting,
 	}, nil
 }
 
 //打开连接
-func (connect *buntdbCacheConnect) Open() error {
+func (connect *buntdbConnect) Open() error {
 	if connect.setting.Store == "" {
 		return errors.New("无效缓存存储")
 	}
@@ -77,7 +78,7 @@ func (connect *buntdbCacheConnect) Open() error {
 }
 
 //关闭连接
-func (connect *buntdbCacheConnect) Close() error {
+func (connect *buntdbConnect) Close() error {
 	if connect.db != nil {
 		if err := connect.db.Close(); err != nil {
 			return err
@@ -87,7 +88,7 @@ func (connect *buntdbCacheConnect) Close() error {
 }
 
 //查询缓存，
-func (connect *buntdbCacheConnect) Read(key string) (Any, error) {
+func (connect *buntdbConnect) Read(key string) (Any, error) {
 	if connect.db == nil {
 		return nil, errInvalidCacheConnection
 	}
@@ -110,10 +111,9 @@ func (connect *buntdbCacheConnect) Read(key string) (Any, error) {
 		return nil, err
 	}
 
-	mcv := buntdbCacheValue{}
+	mcv := buntdbValue{}
 
-	//统一JSON解析
-	err = chef.UnmarshalJSON([]byte(realVal), &mcv)
+	err = codec.UnmarshalJSON([]byte(realVal), &mcv)
 	if err != nil {
 		return nil, nil
 	}
@@ -122,15 +122,14 @@ func (connect *buntdbCacheConnect) Read(key string) (Any, error) {
 }
 
 //更新缓存
-func (connect *buntdbCacheConnect) Write(key string, val Any, expiry time.Duration) error {
+func (connect *buntdbConnect) Write(key string, val Any, expiry time.Duration) error {
 	if connect.db == nil {
 		return errInvalidCacheConnection
 	}
 
-	value := buntdbCacheValue{val}
+	value := buntdbValue{val}
 
-	//统主JSON解析
-	bytes, err := chef.MarshalJSON(value)
+	bytes, err := codec.MarshalJSON(value)
 	if err != nil {
 		return err
 	}
@@ -149,7 +148,7 @@ func (connect *buntdbCacheConnect) Write(key string, val Any, expiry time.Durati
 }
 
 //查询缓存，
-func (connect *buntdbCacheConnect) Exists(key string) (bool, error) {
+func (connect *buntdbConnect) Exists(key string) (bool, error) {
 	if connect.db == nil {
 		return false, errInvalidCacheConnection
 	}
@@ -167,7 +166,7 @@ func (connect *buntdbCacheConnect) Exists(key string) (bool, error) {
 }
 
 //删除缓存
-func (connect *buntdbCacheConnect) Delete(key string) error {
+func (connect *buntdbConnect) Delete(key string) error {
 	if connect.db == nil {
 		return errInvalidCacheConnection
 	}
@@ -178,7 +177,7 @@ func (connect *buntdbCacheConnect) Delete(key string) error {
 	})
 }
 
-func (connect *buntdbCacheConnect) Serial(key string, start, step int64) (int64, error) {
+func (connect *buntdbConnect) Serial(key string, start, step int64) (int64, error) {
 	//加并发锁，忘记之前为什么加了，应该是有问题加了才正常的
 	// connect.mutex.Lock()
 	// defer connect.mutex.Unlock()
@@ -205,7 +204,7 @@ func (connect *buntdbCacheConnect) Serial(key string, start, step int64) (int64,
 	return value, nil
 }
 
-func (connect *buntdbCacheConnect) Clear(prefix string) error {
+func (connect *buntdbConnect) Clear(prefix string) error {
 	if connect.db == nil {
 		return errors.New("连接失败")
 	}
@@ -225,7 +224,7 @@ func (connect *buntdbCacheConnect) Clear(prefix string) error {
 		return nil
 	})
 }
-func (connect *buntdbCacheConnect) Keys(prefix string) ([]string, error) {
+func (connect *buntdbConnect) Keys(prefix string) ([]string, error) {
 	if connect.db == nil {
 		return nil, errors.New("连接失败")
 	}

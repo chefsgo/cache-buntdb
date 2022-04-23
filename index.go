@@ -1,17 +1,17 @@
 package cache_buntdb
 
 import (
-	"github.com/chefsgo/chef"
+	"github.com/chefsgo/cache"
 )
 
-func Driver(ss ...string) chef.CacheDriver {
+func Driver(ss ...string) cache.Driver {
 	store := ""
 	if len(ss) > 0 {
 		store = ss[0]
 	}
-	return &buntdbCacheDriver{store}
+	return &buntdbDriver{store}
 }
 
 func init() {
-	chef.Register("buntdb", Driver("store/cache.db"))
+	cache.Register("buntdb", Driver("store/cache.db"))
 }
