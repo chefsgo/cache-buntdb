@@ -9,7 +9,7 @@ import (
 
 	. "github.com/chefsgo/base"
 	"github.com/chefsgo/cache"
-	"github.com/chefsgo/codec"
+	"github.com/chefsgo/chef"
 	"github.com/tidwall/buntdb"
 )
 
@@ -113,7 +113,7 @@ func (connect *buntdbConnect) Read(key string) (Any, error) {
 
 	mcv := buntdbValue{}
 
-	err = codec.UnmarshalJSON([]byte(realVal), &mcv)
+	err = chef.UnmarshalJSON([]byte(realVal), &mcv)
 	if err != nil {
 		return nil, nil
 	}
@@ -129,7 +129,7 @@ func (connect *buntdbConnect) Write(key string, val Any, expiry time.Duration) e
 
 	value := buntdbValue{val}
 
-	bytes, err := codec.MarshalJSON(value)
+	bytes, err := chef.MarshalJSON(value)
 	if err != nil {
 		return err
 	}
